@@ -47,7 +47,7 @@ services:
       LOGGING_LEVEL_UK_GOV_HMCTS_IDAM: DEBUG
       IDAM_USER_BASE_URI: http://idam-api:8080
       IDAM_S2S_BASE_URI: http://service-auth-provider-api:8080
-      S2S_NAMES_WHITELIST: sscs,divorce,ccd,em_gw,document-management-store,ccd_gw,idam-api,fpl_case_service
+      S2S_NAMES_WHITELIST: sscs,divorce,ccd,em_gw,document-management-store,ccd_gw,idam-api,fpl_case_service,em_stitching_api,em_ccd_orchestrator
       http_proxy:
       https_proxy:
       no_proxy:
@@ -78,6 +78,39 @@ services:
       - 4506:8080
     #   debug port exposed
     #   - 5006:5005
+
+  stitching-api:
+    image: hmcts.azurecr.io/hmcts/em-stitching:latest
+    healthcheck:
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://stitching-db:5432/emstitch
+      - SPRING_DATASOURCE_USERNAME=emstitch
+      - SPRING_DATASOURCE_PASSWORD=emstitch
+      - S2S_BASE_URI=http://service-auth-provider-api:8080
+      - IDAM_API_BASE_URI=http://idam-api:8080
+      - ENABLE_LIQUIBASE=true
+      - APPINSIGHTS_INSTRUMENTATIONKEY=test-key
+      - DM_STORE_APP_URL=http://dm-store:8080
+      - DOCMOSIS_ACCESS_KEY=${DOCMOSIS_ACCESS_KEY}
+    depends_on:
+      - stitching-db
+      - dm-store
+    links:
+      - stitching-db
+      - dm-store
+    ports:
+      - 4630:8080
+
+  stitching-db:
+    image: postgres
+    restart: always
+    environment:
+      - POSTGRES_DB=emstitch
+      - POSTGRES_USER=emstitch
+      - POSTGRES_PASSWORD=emstitch
 
   azure-storage-emulator-azurite:
     image: arafato/azurite
